@@ -1,0 +1,107 @@
+<!DOCTYPE html><html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel - Generate Key</title>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";const firebaseConfig = {
+  apiKey: "AIzaSyBjJHUx76hz6tFi2IKgBXOCaNma6hNyLY4",
+  authDomain: "webs-f0279.firebaseapp.com",
+  projectId: "webs-f0279",
+  storageBucket: "webs-f0279.appspot.com",
+  messagingSenderId: "187261422396",
+  appId: "1:187261422396:web:8d1d5d3035242f2f182c39",
+  measurementId: "G-0SLDHHW5E8"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+async function generateKey() {
+  const days = parseInt(document.getElementById('days').value);
+  const limit = parseInt(document.getElementById('limit').value);
+  const key = Math.random().toString(36).substring(2, 10).toUpperCase();
+  const expires = new Date();
+  expires.setDate(expires.getDate() + days);
+
+  await addDoc(collection(db, "keys"), {
+    key,
+    expires: expires.toISOString().split("T")[0],
+    limit,
+    used: [],
+    createdAt: serverTimestamp()
+  });
+
+  document.getElementById('generated').innerText = `Generated Key: ${key}`;
+}
+
+async function fetchKeys() {
+  const snapshot = await getDocs(collection(db, "keys"));
+  const table = document.getElementById("keysTable");
+  table.innerHTML = '<tr><th>Key</th><th>Expires</th><th>Limit</th><th>Used</th></tr>';
+  snapshot.forEach(doc => {
+    const d = doc.data();
+    const row = `<tr><td>${d.key}</td><td>${d.expires}</td><td>${d.limit}</td><td>${d.used.length}</td></tr>`;
+    table.innerHTML += row;
+  });
+}
+
+async function fetchUsageStats() {
+  const snapshot = await getDocs(collection(db, "keys"));
+  let total = 0, expired = 0, active = 0;
+  const today = new Date();
+  snapshot.forEach(doc => {
+    const d = doc.data();
+    total++;
+    const exp = new Date(d.expires);
+    if (exp < today) expired++;
+    else active++;
+  });
+  document.getElementById("totalKeys").innerText = total;
+  document.getElementById("activeKeys").innerText = active;
+  document.getElementById("expiredKeys").innerText = expired;
+}
+
+window.generateKey = generateKey;
+window.fetchKeys = fetchKeys;
+window.fetchUsageStats = fetchUsageStats;
+
+  </script>
+  <style>
+    body { font-family: Arial, sans-serif; background: #1a1a2e; color: #fff; padding: 40px; }
+    .panel { background: #2e2e48; padding: 20px; border-radius: 10px; max-width: 600px; margin: auto; }
+    input, button { width: 100%; padding: 10px; margin: 10px 0; border: none; border-radius: 5px; }
+    button { background: #00b894; color: white; cursor: pointer; }
+    table { width: 100%; margin-top: 20px; background: #444; border-collapse: collapse; }
+    table th, table td { padding: 10px; border: 1px solid #333; text-align: left; }
+    .stats { display: flex; justify-content: space-between; margin-top: 20px; }
+    .stat-box { background: #3a3a5c; padding: 10px; border-radius: 8px; flex: 1; margin-right: 10px; text-align: center; }
+    .stat-box:last-child { margin-right: 0; }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <h2>Admin Panel – Generate Key</h2>
+    <label>Valid for (days):</label>
+    <input type="number" id="days" placeholder="e.g. 3">
+    <label>Devices allowed:</label>
+    <input type="number" id="limit" placeholder="e.g. 1">
+    <button onclick="generateKey()">Generate Key</button>
+    <p id="generated"></p><hr>
+<h3>Usage Analytics</h3>
+<div class="stats">
+  <div class="stat-box">Total: <span id="totalKeys">0</span></div>
+  <div class="stat-box">Active: <span id="activeKeys">0</span></div>
+  <div class="stat-box">Expired: <span id="expiredKeys">0</span></div>
+</div>
+<button onclick="fetchUsageStats()">Refresh Analytics</button>
+
+<hr>
+<h3>All Keys</h3>
+<button onclick="fetchKeys()">View All Keys</button>
+<table id="keysTable"></table>
+
+  </div>
+</body>
+</html>
